@@ -27,17 +27,17 @@ fn main() {
     //0.1 is learning rate
     let mut perceptron = Perceptron::new(0.1);
 
-    perceptron.train(&and_set);
+    perceptron.train(&and_set, 100_000);
     perceptron.test(&and_set, "AND SET");
 
     let mut perceptron = Perceptron::new(0.1);
 
-    perceptron.train(&or_set);
+    perceptron.train(&or_set, 100_000);
     perceptron.test(&or_set, "OR SET");
 
     let mut perceptron = Perceptron::new(0.1);
     
-    perceptron.train(&nand_set);
+    perceptron.train(&nand_set, 100_000);
     perceptron.test(&nand_set, "NAND SET");
 }
 

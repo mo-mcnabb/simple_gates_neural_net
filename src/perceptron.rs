@@ -22,9 +22,9 @@ impl Perceptron {
         }
     }
     
-    pub fn train(&mut self, set: &Vec<(i32, i32, i32)>) {
+    pub fn train(&mut self, set: &Vec<(i32, i32, i32)>, iterations: usize) {
         
-        for _ in 0..=10_000 {
+        for _ in 0..=iterations {
 
             for i in 0..set.len() {
                 let (x, y, answer) = set.get(i).unwrap();
@@ -50,9 +50,9 @@ impl Perceptron {
         println!("-------------------{set_name}---------------");
         for (x, y, answer) in set.into_iter() {
             let sum = (*x as f64 * self.w1) + (*y as f64 * self.w2) + self.b;
-            let output = Self::sigmoid(sum);
+            let output = Self::sigmoid(sum).round();
 
-            println!("output: {output}, expected: {answer}");
+            println!("output: {output}, expected: {answer}\n");
         }
     }
 
