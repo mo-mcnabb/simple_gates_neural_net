@@ -1,7 +1,7 @@
 // just for fun, learning both rust and neural networks
 
 mod perceptron;
-use crate::perceptron::Perceptron;
+mod neural_net;
 fn main() {
     let and_set = vec![
         (0, 0, 0),
