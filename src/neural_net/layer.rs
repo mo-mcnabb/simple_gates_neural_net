@@ -23,4 +23,5 @@ impl Layer {
             neuron.set_value(val);
         }
     }
+
 }

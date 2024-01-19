@@ -43,17 +43,23 @@ impl NeuralNet {
     
     pub fn train(&mut self, iterations: usize) {
         let inputs = self.inputs.clone();
-        let mut hidden_layers = self.hidden_layers.clone();
+        let mut hidden_layers: Vec<Layer> = self.hidden_layers.clone();
 
         for _ in 0..iterations {
+
             for (x, y, answer) in &inputs {
+
                 self.input_layer.set_neuron_value(0, *x as f64);
                 self.input_layer.set_neuron_value(1, *y as f64);
 
                 Self::feed_forward(hidden_layers.get_mut(0).unwrap(), &mut self.input_layer, self.bias);
 
                 for index in 1..(self.hidden_layers.len()) {
-                    Self::feed_forward(&mut self.hidden_layers.get_mut(index).unwrap(), hidden_layers.get_mut(index - 1).unwrap(), self.bias);
+
+                    let (left, right) = hidden_layers.split_at_mut(index);
+                    let previous_layer = left.last_mut().unwrap();
+                    let current_layer = right.first_mut().unwrap();
+                    Self::feed_forward(current_layer, previous_layer, self.bias);
                 }
 
                 Self::feed_forward(&mut self.output_layer, &mut self.hidden_layers.get_mut(hidden_layers.len() - 1).unwrap(), self.bias);
@@ -66,8 +72,10 @@ impl NeuralNet {
                 Self::back_propagate_bias(self, &error, &sigmoid_derivative);
                 self.hidden_layers.iter_mut().for_each(|layer| Self::back_propagate(layer, &error, &sigmoid_derivative, &self.learning_rate));
                 Self::back_propagate(&mut self.input_layer, &error, &sigmoid_derivative, &self.learning_rate);
+
             }
         }
+        self.hidden_layers = hidden_layers;
     }
 
     fn feed_forward(current_layer: &mut Layer, previous_layer: &mut Layer, bias: f64) {
