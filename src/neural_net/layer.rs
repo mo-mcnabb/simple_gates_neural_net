@@ -1,5 +1,6 @@
 use crate::neural_net::neuron::Neuron;
 
+#[derive(Clone)]
 pub struct Layer {
     pub neurons: Vec<Neuron>
 }
@@ -13,12 +14,12 @@ impl Layer {
         }
     }
 
-    pub fn init_weights(&mut self, next_layer: Layer) {
+    pub fn init_weights(&mut self, next_layer: &Layer) {
         self.neurons.iter_mut().for_each(|neuron| neuron.init_weights(next_layer.neurons.len()));
     }
 
     pub fn set_neuron_value(&mut self, index: usize, val: f64) {
-        if let Some(neuron) = self.neurons.get(index) {
+        if let Some(neuron) = self.neurons.get_mut(index) {
             neuron.set_value(val);
         }
     }

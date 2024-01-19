@@ -14,17 +14,21 @@ impl NeuralNet {
         
         let mut hidden_layers: Vec<Layer> = (0..num_hidden_layers).map(|_| Layer::new(num_hidden_layer_neurons)).collect();
         let output_layer = Layer::new(num_outputs);
-        let mut input_layer = Layer::new(2);
+        let input_layer = Layer::new(2);
 
         if hidden_layers.len() > 1 {
             for index in 0..(hidden_layers.len() - 1) {
-                hidden_layers.get(index).unwrap().init_weights(*hidden_layers.get(index + 1).unwrap());  
+                let next_layer = hidden_layers.get(index + 1).unwrap().clone();
+                if let Some(layer) = hidden_layers.get_mut(index) {
+                    layer.init_weights(&next_layer);
+                }
             }
         }
 
         // sets the weights for the neurons with respect to the outputs neurons,
         // as this is indexing the last layer of the neural network
-        hidden_layers.get(hidden_layers.len() - 1).unwrap().init_weights(output_layer);
+        let last_layer_index = hidden_layers.len() - 1;
+        hidden_layers.get_mut(last_layer_index).unwrap().init_weights(&output_layer);
 
         NeuralNet {
             inputs: inputs,
@@ -38,20 +42,21 @@ impl NeuralNet {
     }
     
     pub fn train(&mut self, iterations: usize) {
-        let inputs = &self.inputs;
+        let inputs = self.inputs.clone();
+        let mut hidden_layers = self.hidden_layers.clone();
 
         for _ in 0..iterations {
-            for (x, y, answer) in inputs {
+            for (x, y, answer) in &inputs {
                 self.input_layer.set_neuron_value(0, *x as f64);
                 self.input_layer.set_neuron_value(1, *y as f64);
 
-                Self::feed_forward(&mut self.hidden_layers.get(0).unwrap(), &mut self.input_layer, self.bias);
+                Self::feed_forward(hidden_layers.get_mut(0).unwrap(), &mut self.input_layer, self.bias);
 
                 for index in 1..(self.hidden_layers.len()) {
-                    Self::feed_forward(&mut self.hidden_layers.get_mut(index).unwrap(), &mut self.hidden_layers.get_mut(index - 1).unwrap(), self.bias);
+                    Self::feed_forward(&mut self.hidden_layers.get_mut(index).unwrap(), hidden_layers.get_mut(index - 1).unwrap(), self.bias);
                 }
 
-                Self::feed_forward(&mut self.output_layer, &mut self.hidden_layers.get_mut(self.hidden_layers.len() - 1).unwrap(), self.bias);
+                Self::feed_forward(&mut self.output_layer, &mut self.hidden_layers.get_mut(hidden_layers.len() - 1).unwrap(), self.bias);
 
                 // TODO: add logic for handling more than one output neuron
                 let output = self.output_layer.neurons.get(0).unwrap().value;
@@ -59,8 +64,8 @@ impl NeuralNet {
                 let error = *answer as f64 - output;
 
                 Self::back_propagate_bias(self, &error, &sigmoid_derivative);
-                self.hidden_layers.iter_mut().for_each(|layer| Self::back_propagate(& self, layer, &error, &sigmoid_derivative));
-                Self::back_propagate(&self, &mut self.input_layer, &error, &sigmoid_derivative);
+                self.hidden_layers.iter_mut().for_each(|layer| Self::back_propagate(layer, &error, &sigmoid_derivative, &self.learning_rate));
+                Self::back_propagate(&mut self.input_layer, &error, &sigmoid_derivative, &self.learning_rate);
             }
         }
     }
@@ -81,10 +86,10 @@ impl NeuralNet {
         }
     }
 
-    fn back_propagate(&self, layer: &mut Layer, error: &f64, sigmoid_derivative: &f64) {
+    fn back_propagate(layer: &mut Layer, error: &f64, sigmoid_derivative: &f64, learning_rate: &f64) {
         for neuron in layer.neurons.iter_mut() {
             let weight_gradient = neuron.value * error * sigmoid_derivative;
-            neuron.weights = neuron.weights.iter_mut().map(|weight| *weight + (self.learning_rate * weight_gradient)).collect();
+            neuron.weights = neuron.weights.iter_mut().map(|weight| *weight + (learning_rate * weight_gradient)).collect();
         } 
     }
 

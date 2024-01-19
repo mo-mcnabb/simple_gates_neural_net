@@ -1,7 +1,9 @@
 // just for fun, learning both rust and neural networks
-
+use rand::prelude::*;
 mod perceptron;
 mod neural_net;
+
+use crate::neural_net::neural_net::NeuralNet;
 fn main() {
     let and_set = vec![
         (0, 0, 0),
@@ -23,6 +25,9 @@ fn main() {
         (1, 0, 1),
         (1, 1, 0),
     ];
+    let mut rng = rand::thread_rng();
+    let bias: f64 = rng.gen();
+    let neural_net = NeuralNet::new(and_set, String::from("And Set"), 1, 6, 1, bias, 0.1);
 /* 
     //0.1 is learning rate
     let mut perceptron = Perceptron::new(0.1);

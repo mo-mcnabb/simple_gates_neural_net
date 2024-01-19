@@ -1,4 +1,5 @@
 use rand::prelude::*;
+#[derive(Clone)]
 pub struct Neuron {
     pub value: f64,
     pub weights: Vec<f64>
