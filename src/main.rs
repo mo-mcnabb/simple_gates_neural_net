@@ -3,7 +3,6 @@ use rand::prelude::*;
 mod perceptron;
 mod neural_net;
 
-use crate::neural_net::neural_net::NeuralNet;
 fn main() {
     let and_set = vec![
         (0, 0, 0),
@@ -12,39 +11,30 @@ fn main() {
         (1, 1, 1),
     ];
 
-    let or_set = vec![
+    let _or_set = vec![
         (0, 0, 0),
         (0, 1, 1),
         (1, 0, 1),
         (1, 1, 1),
     ];
 
-    let nand_set = vec![
+    let _nand_set = vec![
         (0, 0, 1),
         (0, 1, 1),
         (1, 0, 1),
         (1, 1, 0),
     ];
+
+    let test_set: Vec<(f64, f64, f64)> = vec![
+       (0.5, 0.6, 0.7),
+    ];
     let mut rng = rand::thread_rng();
-    let bias: f64 = rng.gen();
-    let neural_net = NeuralNet::new(and_set, String::from("And Set"), 1, 6, 1, bias, 0.1);
-/* 
-    //0.1 is learning rate
-    let mut perceptron = Perceptron::new(0.1);
 
-    perceptron.train(&and_set, 1000);
-    perceptron.test(&and_set, "AND SET");
+    let test: f64 = 23.1347234523452345234523452345;
 
-    let mut perceptron = Perceptron::new(0.1);
-
-    perceptron.train(&or_set, 1000);
-    perceptron.test(&or_set, "OR SET");
-
-    let mut perceptron = Perceptron::new(0.1);
-    
-    perceptron.train(&nand_set, 1000);
-    perceptron.test(&nand_set, "NAND SET");
-    */
+    let scale: f64 = 1000.0;
+    let p: f64 = (test * scale).round() / scale;
+    println!("{p}");
 }
 
     
