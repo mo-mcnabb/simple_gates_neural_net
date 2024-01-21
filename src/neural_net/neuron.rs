@@ -1,4 +1,5 @@
 use rand::prelude::*;
+#[derive(Debug)]
 pub struct Neuron {
     //TODO: look into making these values Option<f64>
     incoming_value: f64,
@@ -38,8 +39,14 @@ impl Neuron {
         self.activation_value = activation_value;
     }
 
-    pub fn set_weights(&mut self, new_weights: Vec<f64>) {
-        self.weights = new_weights;
+    pub fn set_weights(&mut self, new_weights: &Vec<f64>) {
+        // initially had self.weights = new_weights.clone(); but that was slow
+        // iterating over them and setting them individually is faster
+        // no new memory allocation needed, O(n) and these will never be that large :)
+        if self.weights.len() == 0 {
+            self.weights = vec![0.0; new_weights.len()];
+        }
+        self.weights.iter_mut().enumerate().for_each(|(index, weight)| *weight = new_weights[index]);
     }
 }
 
@@ -108,7 +115,7 @@ mod tests {
 
         let new_weights = vec![1.0, 2.0, 3.0];
 
-        neuron.set_weights(new_weights);
+        neuron.set_weights(&new_weights);
         assert_eq!(3, neuron.get_weights().len());
         assert_eq!(vec![1.0, 2.0, 3.0], neuron.get_weights());
     }
