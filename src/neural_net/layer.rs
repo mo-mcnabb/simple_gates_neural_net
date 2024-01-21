@@ -1,11 +1,3 @@
-/*layer properties:
-    neurons
-
-
-functions:
-    activation function
-    */
-
 use crate::neural_net::neuron::Neuron;
 
 // potential Enum for tracking which activation function to use
