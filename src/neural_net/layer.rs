@@ -216,6 +216,36 @@ mod tests {
         assert_eq!(0.707, truncate_to_3_decimal_places(hidden_layer.get_neurons()[3].get_activation_value()));
     }  
 
+    #[test]
+    fn feed_forward_last_pass_hidden_layer_to_output() {
+        let mut hidden_layer = Layer::new(4, 1);
+        hidden_layer.neurons[0].set_incoming_value(0.730);
+        hidden_layer.neurons[0].set_activation_value(0.675);
+        hidden_layer.neurons[1].set_incoming_value(0.780);
+        hidden_layer.neurons[1].set_activation_value(0.686);
+        hidden_layer.neurons[2].set_incoming_value(0.830);
+        hidden_layer.neurons[2].set_activation_value(0.696); 
+        hidden_layer.neurons[3].set_incoming_value(0.880);
+        hidden_layer.neurons[3].set_activation_value(0.707);
+
+        let hidden_layer_weights = vec![
+            vec![0.40],
+            vec![0.45],
+            vec![0.50],
+            vec![0.55]
+        ];
+
+        let result = hidden_layer.set_neuron_weights_explicit(&hidden_layer_weights);
+
+        assert_eq!(Ok(()), result);
+
+        let mut output_layer = Layer::new(1, 0);
+
+        hidden_layer.feed_forward(&mut output_layer, 0.5);
+
+        assert_eq!(1.816, truncate_to_3_decimal_places(output_layer.get_neurons()[0].get_incoming_value()));
+        assert_eq!(0.860, truncate_to_3_decimal_places(output_layer.get_neurons()[0].get_activation_value()));
+    }
 
     fn truncate_to_3_decimal_places(val: f64) -> f64 {
         let scale = 1000.0;
