@@ -116,19 +116,14 @@ impl Layer {
                     .map(|neuron| neuron.get_weights().clone())
                     .collect();
 
-                println!("{:#?}", weights);
                 for (i, neuron) in self.get_neurons_mut().iter_mut().enumerate() {
                     let error: f64 = next_layer.neurons.iter().enumerate().fold(0.0, |acc, (j, next_neuron)| {
-                        println!("weights being indexed: {:#?}", weights[i][j]);
-                        println!("nect neuron error gradient: {}", next_neuron.get_error_gradient());
-                        println!("{} * {} = {}", weights[i][j], next_neuron.get_error_gradient(), weights[i][j] * next_neuron.get_error_gradient());
                         acc + (weights[i][j] * next_neuron.get_error_gradient())
                     });
 
                     
                     let sigmoid_deriv = Layer::sigmoid_derivative_already_activated(neuron.get_activation_value());
                     neuron.set_error_gradient(sigmoid_deriv * error);
-                    println!("error gradient being set: {}", neuron.get_error_gradient());
                 }
             } 
             else {
