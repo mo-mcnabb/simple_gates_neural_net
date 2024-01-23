@@ -6,7 +6,7 @@ use crate::neural_net::neuron::Neuron;
     //blah
     //blah
 }*/
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Layer {
     neurons: Vec<Neuron>,
     // potentially individual bias for each layer
@@ -26,6 +26,10 @@ impl Layer {
 
     pub fn get_neurons(&self) -> &Vec<Neuron> {
         &self.neurons
+    }
+
+    pub fn get_neurons_mut(&mut self) -> &mut Vec<Neuron> {
+        &mut self.neurons
     }
     
     pub fn set_neuron_weights_explicit(&mut self, weights: &Vec<Vec<f64>>) -> Result<(), String>{
@@ -48,12 +52,29 @@ impl Layer {
         Ok(())
     }
 
+    pub fn set_neuron_values_explicit(&mut self, values: Vec<f64>) -> Result<(), String> {
+        if self.get_neurons().len() != values.len() {
+            return Err(format!("Number of neurons does not equal the number of values given to the function. Expected {}, got {}", self.get_neurons().len(), values.len()));
+        }
+
+        self.neurons.iter_mut().zip(values).for_each(|(neuron, value)| {
+            neuron.set_incoming_value(value);
+            neuron.set_activation_value(value);
+        });
+
+        Ok(())
+    }
+
     pub fn sigmoid(sum: f64) -> f64 {
        1.0 / (1.0 + (-sum).exp())
     }
 
     pub fn sigmoid_derivative(input: f64) -> f64 {
-        input * (1.0 - input)
+        Layer::sigmoid(input) * (1.0 - Layer::sigmoid(input))
+    }
+
+    pub fn sigmoid_derivative_already_activated(activated_value: f64) -> f64 {
+        activated_value * (1.0 - activated_value)
     }
 
     pub fn feed_forward(&mut self, next_layer: &mut Layer, bias: f64) {
@@ -69,8 +90,95 @@ impl Layer {
         });
            }
 
-    pub fn back_propagate(&mut self, previous_layer: &Layer) {
-        todo!("write this shit out dawg");
+    pub fn set_default_neuron_values(&mut self, value: f64) {
+        self.neurons.iter_mut().for_each(|neuron| {
+            
+            neuron.set_activation_value(value);
+            neuron.set_incoming_value(value);
+        });
+    }
+
+    pub fn set_neuron_error_gradients(&mut self, error: f64) {
+        
+        self.neurons.iter_mut().for_each(|neuron| {
+            let sigmoid_d = Layer::sigmoid_derivative(neuron.get_activation_value());
+            
+            neuron.set_error_gradient(sigmoid_d * error);
+        });
+    }
+
+    pub fn back_propagate(&mut self, expected_values: &Vec<f64>, learning_rate: f64, next_layer: Option<&Layer>) {
+        if let Some(next_layer) = next_layer {
+            // Check if next_layer is the output layer
+            if next_layer.get_neurons()[0].get_weights().len() == 0 {
+                // output layer -> hidden layer case
+                let weights: Vec<Vec<f64>> = self.get_neurons().iter()
+                    .map(|neuron| neuron.get_weights().clone())
+                    .collect();
+
+                println!("{:#?}", weights);
+                for (i, neuron) in self.get_neurons_mut().iter_mut().enumerate() {
+                    let error: f64 = next_layer.neurons.iter().enumerate().fold(0.0, |acc, (j, next_neuron)| {
+                        println!("weights being indexed: {:#?}", weights[i][j]);
+                        println!("nect neuron error gradient: {}", next_neuron.get_error_gradient());
+                        println!("{} * {} = {}", weights[i][j], next_neuron.get_error_gradient(), weights[i][j] * next_neuron.get_error_gradient());
+                        acc + (weights[i][j] * next_neuron.get_error_gradient())
+                    });
+
+                    
+                    let sigmoid_deriv = Layer::sigmoid_derivative_already_activated(neuron.get_activation_value());
+                    neuron.set_error_gradient(sigmoid_deriv * error);
+                    println!("error gradient being set: {}", neuron.get_error_gradient());
+                }
+            } 
+            else {
+                // Hidden layer case
+                for (i, neuron) in self.neurons.iter_mut().enumerate() {
+                    let error: f64 = next_layer.neurons.iter().fold(0.0, |acc, next_neuron| {
+                        acc + (next_neuron.get_weights()[i] * next_neuron.get_error_gradient())
+                    });
+
+                    let sigmoid_deriv = Layer::sigmoid_derivative(neuron.get_activation_value());
+                    neuron.set_error_gradient(sigmoid_deriv * error);
+                }
+            }
+        } 
+        else {
+            // Output layer case
+            for (neuron, &expected) in self.get_neurons_mut().iter_mut().zip(expected_values) {
+                let error = expected - neuron.get_activation_value();
+                let sigmoid_deriv = Layer::sigmoid_derivative_already_activated(neuron.get_activation_value());
+
+                // the cost function is (OUTPUTexpected - OUTPUTpredicted)^2
+                // we calculate the inside of the parentheses above with the error variable
+                // the derivative of (OUTPUTexpected - OUTPUTpredicted)^2 = 2(OUTPUTexpected - OUTPUTpredicted)
+                // so the derivative of the cost function is 2.0 * error
+                // and the error gradient is derivative of the cost function * the sigmoid derivative :D
+                neuron.set_error_gradient(2.0 *  error * sigmoid_deriv);
+            }
+        }
+
+        // Update weights
+        self.update_weights_back_prop(learning_rate);
+    }
+
+
+    //error_gradient = 0.2
+    //activation_value = 5.0
+    // weights: [2.0, 4.0]
+    fn update_weights_back_prop(&mut self, learning_rate: f64) {
+         self.get_neurons_mut()
+            .iter_mut()
+            .for_each(|neuron| {
+                let old_weights = neuron.get_weights();
+                let mut new_weights: Vec<f64> = Vec::new();
+
+                old_weights.iter().for_each(|old_weight| {
+                    let val = old_weight + (learning_rate * neuron.get_error_gradient() * neuron.get_activation_value());
+                    new_weights.push(val);
+                });
+                neuron.set_weights(&new_weights);
+            });
     }
 
     fn apply_to_neurons<F>(&mut self, mut f: F)
@@ -114,9 +222,9 @@ mod tests {
         assert_eq!(0.622, truncate_to_3_decimal_places(val2));
         assert_eq!(0.731, truncate_to_3_decimal_places(val3));
 
-        let sigmoid_derivative1 = Layer::sigmoid_derivative(val1);
-        let sigmoid_derivative2 = Layer::sigmoid_derivative(val2);
-        let sigmoid_derivative3 = Layer::sigmoid_derivative(val3);
+        let sigmoid_derivative1 = Layer::sigmoid_derivative(0.0);
+        let sigmoid_derivative2 = Layer::sigmoid_derivative(0.5);
+        let sigmoid_derivative3 = Layer::sigmoid_derivative(1.0);
 
         assert_eq!(0.25, truncate_to_3_decimal_places(sigmoid_derivative1));
         assert_eq!(0.235, truncate_to_3_decimal_places(sigmoid_derivative2));
@@ -239,10 +347,160 @@ mod tests {
         assert_eq!(0.860, truncate_to_3_decimal_places(output_layer.get_neurons()[0].get_activation_value()));
     }
 
+    #[test]
+    fn set_default_neuron_values_test() {
+        let mut layer = Layer::new(3, 0);
+
+        layer.set_default_neuron_values(0.5);
+
+        layer.get_neurons().iter().for_each(|neuron| {
+            
+            assert_eq!(0.5, neuron.get_activation_value());
+            assert_eq!(0.5, neuron.get_incoming_value());
+        });
+
+        layer.set_default_neuron_values(9.0);
+
+        layer.get_neurons().iter().for_each(|neuron| {
+            
+            assert_eq!(9.0, neuron.get_activation_value());
+            assert_eq!(9.0, neuron.get_incoming_value());
+        });
+    }
+
+    #[test]
+    fn set_neuron_error_gradients_check() {
+        let mut layer = Layer::new(3, 0); 
+        layer.neurons[0].set_activation_value(0.0);
+        layer.neurons[1].set_activation_value(0.0);
+        layer.neurons[2].set_activation_value(0.0);
+
+        // sigmoid(input) * (1 - sigmoid(input))
+        let error = -4.0;
+        layer.set_neuron_error_gradients(error);
+
+        assert_eq!(-1.0, layer.get_neurons()[0].get_error_gradient());
+        assert_eq!(-1.0, layer.get_neurons()[1].get_error_gradient());
+        assert_eq!(-1.0, layer.get_neurons()[2].get_error_gradient());
+    }
+
+    #[test]
+    fn set_neuron_values_explicit_incorrect_len() {
+        let mut layer = Layer::new(3, 0);
+        let incorrect_len_values = vec![
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0
+        ];
+
+        let result = layer.set_neuron_values_explicit(incorrect_len_values);
+
+        assert_ne!(Ok(()), result);
+        assert_eq!("Number of neurons does not equal the number of values given to the function. Expected 3, got 5", result.unwrap_err());
+    }
+
+    #[test]
+    fn set_neuron_values_explicit_check() {
+        let mut layer = Layer::new(3, 0);
+        let correct_len_values = vec![
+            3.0,
+            4.0,
+            5.0,
+        ];
+
+        let result = layer.set_neuron_values_explicit(correct_len_values);
+
+        assert_eq!(Ok(()), result);
+
+        assert_eq!(3.0, layer.get_neurons()[0].get_activation_value());
+        assert_eq!(3.0, layer.get_neurons()[0].get_incoming_value());
+        assert_eq!(4.0, layer.get_neurons()[1].get_activation_value());
+        assert_eq!(4.0, layer.get_neurons()[1].get_incoming_value());
+        assert_eq!(5.0, layer.get_neurons()[2].get_activation_value());
+        assert_eq!(5.0, layer.get_neurons()[2].get_incoming_value());
+    }
+
+    #[test]
+    fn output_layer_back_propagation_test(){
+        let mut output_layer = Layer::new(1,0);
+        let result = output_layer.set_neuron_values_explicit(vec![0.75]);
+        assert_eq!(Ok(()), result);
+
+        // corresponds to number of output neurons
+        let expected_values = vec![0.7];
+
+        // None because there is no next layer - the output is the last
+        output_layer.back_propagate(&expected_values, 0.01, None);
+
+        assert_eq!(-0.019, truncate_to_3_decimal_places(output_layer.get_neurons()[0].get_error_gradient()));
+    }
+
+    #[test]
+    fn hidden_layer_back_propagation_test() {
+        let mut hidden_layer = Layer::new(4, 1);
+        let mut output_layer = Layer::new(1, 0);
+        let result = output_layer.set_neuron_values_explicit(vec![0.75]);
+        assert_eq!(Ok(()), result);
+
+        let hidden_layer_values = vec![0.6, 0.7, 0.8, 0.9];
+        let result = hidden_layer.set_neuron_values_explicit(hidden_layer_values);
+        assert_eq!(Ok(()), result);
+    
+        let hidden_layer_initial_weights = vec![
+            vec![0.9],
+            vec![0.1],
+            vec![0.8],
+            vec![0.2],
+        ];
+        let result = hidden_layer.set_neuron_weights_explicit(&hidden_layer_initial_weights);
+        assert_eq!(Ok(()), result);
+        
+        let expected_values = vec![0.7];
+        output_layer.back_propagate(&expected_values, 0.01, None);
+        assert_eq!(-0.019, truncate_to_3_decimal_places(output_layer.get_neurons()[0].get_error_gradient()));
+
+        hidden_layer.back_propagate(&expected_values, 0.01, Some(&output_layer));
+ 
+        assert_eq!(-0.0041, truncate_to_4_decimal_places(hidden_layer.get_neurons()[0].get_error_gradient()));
+        assert_eq!(-0.0004, truncate_to_4_decimal_places(hidden_layer.get_neurons()[1].get_error_gradient()));
+        assert_eq!(-0.0024, truncate_to_4_decimal_places(hidden_layer.get_neurons()[2].get_error_gradient()));
+        assert_eq!(-0.0003, truncate_to_4_decimal_places(hidden_layer.get_neurons()[3].get_error_gradient()));
+
+        assert_eq!(0.900, truncate_to_3_decimal_places(hidden_layer.get_neurons()[0].get_weights()[0]));
+        assert_eq!(0.100, truncate_to_3_decimal_places(hidden_layer.get_neurons()[1].get_weights()[0]));
+        assert_eq!(0.800, truncate_to_3_decimal_places(hidden_layer.get_neurons()[2].get_weights()[0]));
+        assert_eq!(0.200, truncate_to_3_decimal_places(hidden_layer.get_neurons()[3].get_weights()[0]));
+
+        // corresponds to number of output neurons
+     }
+
+    #[test]
+    fn update_weights_back_prop_check() {
+        let mut layer = Layer::new(1, 2);
+        layer.get_neurons_mut().iter_mut().for_each(|neuron| {
+            
+            neuron.set_error_gradient(0.2);
+            neuron.set_activation_value(5.0);
+
+            let weights = vec![2.0, 4.0];
+            neuron.set_weights(&weights);
+        });
+
+        layer.update_weights_back_prop(0.1);
+
+        assert_eq!(2.1, layer.get_neurons()[0].get_weights()[0]);
+        assert_eq!(4.1, layer.get_neurons()[0].get_weights()[1]);
+    }
+
     fn truncate_to_3_decimal_places(val: f64) -> f64 {
         let scale = 1000.0;
         (val * scale).round() / scale
     }
+
+    fn truncate_to_4_decimal_places(val: f64) -> f64 {
+        let scale = 10_000.0;
+        (val * scale).round() / scale
+    }
 }
-
-

@@ -1,10 +1,11 @@
 use rand::prelude::*;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Neuron {
     //TODO: look into making these values Option<f64>
     incoming_value: f64,
     activation_value: f64,
-    weights: Vec<f64>
+    weights: Vec<f64>,
+    error_gradient: f64
 }
 
 impl Neuron {
@@ -16,6 +17,7 @@ impl Neuron {
             incoming_value: 0.0,
             activation_value: 0.0,
             weights: init_weights,
+            error_gradient: 0.0
         }
     }
 
@@ -31,6 +33,10 @@ impl Neuron {
         self.weights.clone()
     }
 
+    pub fn get_error_gradient(&self) -> f64 {
+        self.error_gradient
+    }
+
     pub fn set_incoming_value(&mut self, incoming_value: f64) {
         self.incoming_value = incoming_value;
     }
@@ -38,6 +44,11 @@ impl Neuron {
     pub fn set_activation_value(&mut self, activation_value: f64) {
         self.activation_value = activation_value;
     }
+
+    pub fn set_error_gradient(&mut self, error_gradient: f64) {
+        self.error_gradient = error_gradient;
+    }
+
 
     pub fn set_weights(&mut self, new_weights: &Vec<f64>) {
         // initially had self.weights = new_weights.clone(); but that was slow
@@ -59,7 +70,8 @@ mod tests {
         let neuron = Neuron {
             incoming_value: 4.9,
             activation_value: 0.0,
-            weights: Vec::new()
+            weights: Vec::new(),
+            error_gradient: 0.0
         };
 
         assert_eq!(4.9, neuron.get_incoming_value());
@@ -70,7 +82,8 @@ mod tests {
         let mut neuron = Neuron {
             incoming_value: 4.9,
             activation_value: 0.0,
-            weights: Vec::new()
+            weights: Vec::new(),
+            error_gradient: 0.0
         }; 
 
         assert_eq!(4.9, neuron.get_incoming_value());
@@ -84,7 +97,8 @@ mod tests {
         let neuron = Neuron {
             incoming_value: 3.2,
             activation_value: 19.2,
-            weights: Vec::new()
+            weights: Vec::new(),
+            error_gradient: 0.0
         };
 
         assert_eq!(19.2, neuron.get_activation_value());
@@ -96,6 +110,7 @@ mod tests {
             incoming_value: 9.5,
             activation_value: 4.1,
             weights: Vec::new(),
+            error_gradient: 0.0
         };
 
         assert_eq!(4.1, neuron.get_activation_value());
@@ -111,6 +126,7 @@ mod tests {
             incoming_value: 0.0,
             activation_value: 0.0,
             weights: Vec::new(),
+            error_gradient: 0.0
         };
 
         let new_weights = vec![1.0, 2.0, 3.0];
@@ -141,5 +157,20 @@ mod tests {
 
         assert_eq!(0.0, neuron.get_activation_value());
         assert_eq!(0.0, neuron.get_incoming_value());
+    }
+
+    #[test]
+    fn set_error_gradient_check() {
+        let mut neuron = Neuron::new(10);
+
+        neuron.set_error_gradient(0.554);
+        assert_eq!(0.554, neuron.error_gradient);
+    }
+
+    #[test]
+    fn get_error_gradient_check() {
+        let mut neuron = Neuron::new(100);
+        neuron.set_error_gradient(9.21);
+        assert_eq!(9.21, neuron.get_error_gradient());
     }
 }
